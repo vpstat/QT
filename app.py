@@ -197,10 +197,14 @@ TOPICS = [
     ("🧮", "Formula Reference Sheet",          "formulas"),
 ]
 
-
 # ── Sidebar navigation ────────────────────────────────────────────────────────
-if "selected_topic_idx" not in st.session_state:
-    st.session_state.selected_topic_idx = 0
+labels = [f"{icon}  {name}" for icon, name, _ in TOPICS]
+
+# Pending navigation: set by buttons, consumed before radio renders
+if "_pending_nav" not in st.session_state:
+    st.session_state._pending_nav = 0
+
+nav_index = st.session_state._pending_nav
 
 with st.sidebar:
     st.markdown("## 📊 Quant Techniques")
@@ -214,21 +218,20 @@ with st.sidebar:
         if matches:
             for idx, icon, name, key in matches:
                 if st.button(f"{icon}  {name}", key=f"search_{key}", use_container_width=True):
-                    st.session_state.selected_topic_idx = idx
+                    st.session_state._pending_nav = idx
                     st.rerun()
         else:
             st.caption("No matching topics found.")
         st.markdown("---")
 
-    labels = [f"{icon}  {name}" for icon, name, _ in TOPICS]
     choice = st.radio(
         "Navigate to:", labels,
-        index=st.session_state.selected_topic_idx,
-        key="nav_radio",
+        index=nav_index,
         label_visibility="collapsed",
     )
-    st.session_state.selected_topic_idx = labels.index(choice)
-    selected_key = TOPICS[st.session_state.selected_topic_idx][2]
+    # Sync pending nav from radio selection
+    st.session_state._pending_nav = labels.index(choice)
+    selected_key = TOPICS[st.session_state._pending_nav][2]
     st.markdown("---")
     st.markdown(
         "<small style='color:#556;'>📘 Each topic includes Introduction, "
@@ -265,7 +268,7 @@ if selected_key == "home":
             with cols[j]:
                 topic_idx = i + j + 1  # +1 because we skipped Home
                 if st.button(f"{icon}  {name}", key=f"btn_{key}", use_container_width=True):
-                    st.session_state.selected_topic_idx = topic_idx
+                    st.session_state._pending_nav = topic_idx
                     st.rerun()
 
     st.markdown("<br>", unsafe_allow_html=True)
