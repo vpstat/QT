@@ -39,11 +39,11 @@ html, body, [class*="css"] {
 
 /* ── Topic header banner ── */
 .topic-header {
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
     border-radius: 14px;
     padding: 1.6rem 2rem;
     margin-bottom: 1.5rem;
-    box-shadow: 0 4px 18px rgba(79,70,229,0.2);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.25);
 }
 .topic-header h1 { color: #fff; margin: 0; font-size: 1.9rem; font-weight: 700; }
 .topic-header p  { color: rgba(255,255,255,0.88); margin: 0.4rem 0 0; font-size: 1rem; }
@@ -139,6 +139,18 @@ p, li, td, th, label { color: #111111; }
 h1, h2, h3, h4, h5, h6 { color: #1e1b4b; }
 code { background: #f1f5f9; color: #1e40af; border-radius: 4px; padding: 1px 5px; }
 </style>
+<script>
+    // Robust scroll-to-top on every Streamlit rerun
+    setTimeout(function() {
+        var main = window.parent.document.querySelector('section.main');
+        if (main) main.scrollTo({top: 0, behavior: 'instant'});
+        var block = window.parent.document.querySelector('[data-testid="stAppViewBlockContainer"]');
+        if (block) block.scrollTo({top: 0, behavior: 'instant'});
+        var app = window.parent.document.querySelector('.main');
+        if (app) app.scrollTo({top: 0, behavior: 'instant'});
+        window.parent.scrollTo({top: 0, behavior: 'instant'});
+    }, 100);
+</script>
 """, unsafe_allow_html=True)
 
 # ── Topic registry ────────────────────────────────────────────────────────────
@@ -163,25 +175,71 @@ TOPICS = [
     ("🎰", "Random Variables",                 "random_variables"),
     ("➗", "Mean, Variance & IQR",             "mean_variance"),
     ("📊", "PMF, Expected Value & Discrete Uniform", "pmf_distributions"),
-    # ── Advanced Topics ──
+    ("🪙", "Bernoulli & Binomial Distribution", "bernoulli_binomial"),
+    ("📬", "Poisson Distribution",             "poisson"),
+    ("🌊", "Continuous Distributions",         "continuous_distributions"),
+    ("🎮", "Distribution Playground",          "distribution_playground"),
+    # ── Normal & Sampling ──
     ("📐", "Chebyshev's Inequality",           "chebyshev"),
     ("🔔", "Normal Distribution",              "normal_distribution"),
+    ("📐", "Standard Normal & Sampling",       "standard_normal_sampling"),
+    ("🔁", "Central Limit Theorem",            "clt"),
+    # ── Inference ──
+    ("🎯", "Point Estimation & Confidence Intervals", "estimation_ci"),
+    ("⚖️", "Hypothesis Testing",               "hypothesis_testing"),
+    ("📊", "P-Values — Complete Guide",        "p_values"),
+    ("📊", "Student's t-Distribution",         "t_distribution"),
+    ("📋", "Z-Score & t-Score Tables",         "z_t_tables"),
+    # ── Advanced Analysis ──
+    ("📊", "ANOVA",                            "anova"),
+    ("📈", "Regression & F-Test",              "regression"),
     # ── Reference ──
     ("🧮", "Formula Reference Sheet",          "formulas"),
 ]
 
 
 # ── Sidebar navigation ────────────────────────────────────────────────────────
+if "selected_topic_idx" not in st.session_state:
+    st.session_state.selected_topic_idx = 0
+
 with st.sidebar:
     st.markdown("## 📊 Quant Techniques")
-    st.markdown("---")
+
+    # Search bar
+    search = st.text_input("🔍 Search topics...", "", key="topic_search", placeholder="e.g. Bayes, ANOVA, z-score...")
+    if search.strip():
+        query = search.strip().lower()
+        matches = [(i, icon, name, key) for i, (icon, name, key) in enumerate(TOPICS)
+                   if query in name.lower() or query in key.lower()]
+        if matches:
+            for idx, icon, name, key in matches:
+                if st.button(f"{icon}  {name}", key=f"search_{key}", use_container_width=True):
+                    st.session_state.selected_topic_idx = idx
+                    st.rerun()
+        else:
+            st.caption("No matching topics found.")
+        st.markdown("---")
+
     labels = [f"{icon}  {name}" for icon, name, _ in TOPICS]
-    choice = st.radio("Navigate to:", labels, index=0, label_visibility="collapsed")
-    selected_key = TOPICS[labels.index(choice)][2]
+    choice = st.radio(
+        "Navigate to:", labels,
+        index=st.session_state.selected_topic_idx,
+        key="nav_radio",
+        label_visibility="collapsed",
+    )
+    st.session_state.selected_topic_idx = labels.index(choice)
+    selected_key = TOPICS[st.session_state.selected_topic_idx][2]
     st.markdown("---")
     st.markdown(
         "<small style='color:#556;'>📘 Each topic includes Introduction, "
         "Concepts, Solved Problems & Tricky Questions.</small>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("---")
+    st.markdown(
+        "<small style='color:#888;'>© Vivek Pathak<br>"
+        "<a href='https://www.linkedin.com/in/vivekpathak03/' target='_blank' "
+        "style='color:#4f46e5;text-decoration:none;'>🔗 LinkedIn Profile</a></small>",
         unsafe_allow_html=True,
     )
 
@@ -191,7 +249,7 @@ if selected_key == "home":
     st.markdown("""
     <div class='topic-header'>
         <h1>📊 Quantitative Techniques</h1>
-        <p>An interactive study guide covering statistics, probability & data analysis — from basics to advanced concepts.</p>
+        <p>An interactive study guide covering statistics, probability, distributions, inference, ANOVA & regression.</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -203,24 +261,22 @@ if selected_key == "home":
     for i in range(0, len(topics_for_grid), cols_per_row):
         row = topics_for_grid[i:i+cols_per_row]
         cols = st.columns(cols_per_row)
-        for j, (icon, name, _) in enumerate(row):
+        for j, (icon, name, key) in enumerate(row):
             with cols[j]:
-                st.markdown(f"""
-                <div class='home-card'>
-                    <div class='icon'>{icon}</div>
-                    <div class='title'>{name}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                topic_idx = i + j + 1  # +1 because we skipped Home
+                if st.button(f"{icon}  {name}", key=f"btn_{key}", use_container_width=True):
+                    st.session_state.selected_topic_idx = topic_idx
+                    st.rerun()
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("---")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("📖 Topics Covered", "12")
+        st.metric("📖 Topics Covered", "32")
     with col2:
-        st.metric("🧮 LaTeX Formulas", "50+")
+        st.metric("🧮 LaTeX Formulas", "200+")
     with col3:
-        st.metric("✅ Solved Problems", "40+")
+        st.metric("✅ Solved Problems", "80+")
 
 else:
     try:
@@ -233,3 +289,4 @@ else:
         st.error(f"Error loading topic: {e}")
         import traceback
         st.code(traceback.format_exc())
+
